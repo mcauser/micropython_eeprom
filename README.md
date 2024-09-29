@@ -18,7 +18,7 @@ The drivers have the following common features:
  2. This can be accessed as an array of bytes, using Python slice syntax or via
  a `readwrite` method.
  3. Alternatively the array can be formatted and mounted as a filesystem using
- methods in the `uos` module. Any filesystem supported by the MicroPython build
+ methods in the `os` module. Any filesystem supported by the MicroPython build
  may be employed: FAT and littlefs have been tested. The latter is recommended.
  4. Drivers are portable: buses and pins should be instantiated using the
  `machine` module.
@@ -195,10 +195,28 @@ with the same block size.
 This [doc](./BASE_CLASSES.md) has information on the base classes for those
 wishing to write drivers for other memory devices.
 
-# 4. littlefs support
+# 4. Filesystem support
 
 The test programs use littlefs and therefore require MicroPython V1.12 or
 later. On platforms that don't support littlefs the options are either to adapt
 the test programs for FAT (code is commented out) or to build firmware with
 littlefs support. This can be done by passing `MICROPY_VFS_LFS2=1` to the
 `make` command.
+
+A filesystem can be mounted in `boot.py`: this enables it to be managed on the
+PC using `rshell` or `mpremote`. Exact details are hardware dependent (see the
+relevant docs) but a typical `mount.py` is as below, called by the last line in
+`boot.py`:
+```py
+import os
+from machine import SPI, Pin, SoftSPI
+from eeprom_spi import EEPROM
+spi = SoftSPI(baudrate=5_000_000, sck=Pin("Y6"), miso=Pin("Y7"), mosi=Pin("Y8"))
+cspins = (Pin(Pin.board.Y5, Pin.OUT, value=1), Pin(Pin.board.Y4, Pin.OUT, value=1))
+eep = EEPROM(spi, cspins, 128)
+os.mount(eep, "/eeprom")
+```
+The filesystem may then be accessed as follows:
+```bash
+$ mpremote cp foo.py :/eeprom/
+```
